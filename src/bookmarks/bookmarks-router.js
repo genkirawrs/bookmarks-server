@@ -1,3 +1,4 @@
+const path = require('path')
 const express = require('express')
 const { v4: uuid } = require('uuid')
 const BookmarksService = require('./bookmarks-service')
@@ -49,7 +50,7 @@ bookmarksRouter
       .then(bookmark => {
         res
           .status(201)
-          .location(`/bookmarks/${bookmark.id}`)
+          .location(path.posix.join(req.originalUrl, `/${bookmark.id}`))
           .json(serializeBookmark(bookmark))
       })
       .catch(next)
@@ -88,6 +89,29 @@ bookmarksRouter
        req.params.bookmark_id
      )
       .then(() => {
+        res.status(204).end()
+      })
+      .catch(next)
+  })
+  .patch(bodyParser, (req, res, next) => {
+    const { title, description, url, rating } = req.body
+    const bookmarkToUpdate = { title, description, url, rating }
+
+    const numberOfValues = Object.values(bookmarkToUpdate).filter(Boolean).length
+    if (numberOfValues === 0) {
+      return res.status(400).json({
+        error: {
+          message: `Request body must contain either 'title', 'description', 'url' or 'rating'`
+        }
+      })
+    }
+ 
+    BookmarksService.updateBookmark(
+      req.app.get('db'),
+      req.params.bookmark_id,
+      bookmarkToUpdate
+    )
+      .then(numRowsAffected => {
         res.status(204).end()
       })
       .catch(next)
